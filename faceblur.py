@@ -1,8 +1,5 @@
 import cv2
 
-image = cv2.imread('foregroundextracted.jpg')  #put the path of the image here
-result_image = image.copy()
-
 # Specify the trained cascade classifier
 face_cascade_name = "./haarcascade_frontalface_default.xml"
 
@@ -12,30 +9,53 @@ face_cascade = cv2.CascadeClassifier()
 # Load the specified classifier
 face_cascade.load(face_cascade_name)
 
-#Preprocess the image
-grayimg = cv2.cvtColor(image, cv2.cv.CV_BGR2GRAY)
-grayimg = cv2.equalizeHist(grayimg)
+# Initialize the webcam
+cap = cv2.VideoCapture(1)
 
-#Run the classifiers
-faces = face_cascade.detectMultiScale(grayimg, 1.1, 2, 0|cv2.cv.CV_HAAR_SCALE_IMAGE, (30, 30))
+# Check if the webcam is opened successfully
+if not cap.isOpened():
+    print("Failed to open webcam")
+    exit()
 
-print "Faces detected"
+while True:
+    # Read a frame from the webcam
+    ret, frame = cap.read()
 
-if len(faces) != 0:         # If there are faces in the images
-    for f in faces:         # For each face in the image
+    # Check if the frame was captured successfully
+    if not ret:
+        print("Failed to capture frame")
+        break
 
-        # Get the origin co-ordinates and the length and width till where the face extends
-        x, y, w, h = [ v for v in f ]
+    # Preprocess the frame
+    grayimg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    grayimg = cv2.equalizeHist(grayimg)
 
-        # get the rectangle img around all the faces
-        cv2.rectangle(image, (x,y), (x+w,y+h), (255,255,0), 5)
-        sub_face = image[y:y+h, x:x+w]
-        # apply a gaussian blur on this new recangle image
-        sub_face = cv2.GaussianBlur(sub_face,(23, 23), 30)
-        # merge this blurry rectangle to our final image
-        result_image[y:y+sub_face.shape[0], x:x+sub_face.shape[1]] = sub_face
-        face_file_name = "./face_" + str(y) + ".jpg"
-        cv2.imwrite(face_file_name, sub_face)
+    # Run the face detection
+    faces = face_cascade.detectMultiScale(grayimg, 1.1, 2, 0|cv2.CASCADE_SCALE_IMAGE, (30, 30))
 
-# cv2.imshow("Detected face", result_image)
-cv2.imwrite("./result.png", result_image)
+    print("Faces detected")
+
+    if len(faces) != 0:
+        for (x, y, w, h) in faces:
+            # Draw a rectangle around each detected face
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 0), 5)
+
+            # Extract the face region
+            sub_face = frame[y:y+h, x:x+w]
+
+            # Apply Gaussian blur to the face region
+            sub_face = cv2.GaussianBlur(sub_face, (23, 23), 30)
+
+            # Merge the blurred face region back to the frame
+            frame[y:y+sub_face.shape[0], x:x+sub_face.shape[1]] = sub_face
+
+    # Display the frame with detected faces
+    cv2.imshow("Real-Time Face Detection", frame)
+
+    # Break the loop when the 'q' key is pressed
+    if cv2.waitKey(1) == ord('q'):
+        break
+
+# Release the webcam and close the OpenCV window
+cap.release()
+cv2.destroyAllWindows()
